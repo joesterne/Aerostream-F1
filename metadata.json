@@ -1,0 +1,13 @@
+{
+  "name": "AeroStream F1: Wind Tunnel & Telemetry Lab",
+  "description": "Professional 3D wind tunnel visualization and real-time F1 telemetry testing platform. Features advanced AI-driven performance tuning, live weather integration, and multiplayer simulation capabilities.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "3D Rendering",
+    "AI Performance Analysis",
+    "Real-time Telemetry Dashboard"
+  ]
+}
