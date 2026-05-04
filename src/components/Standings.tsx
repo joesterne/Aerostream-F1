@@ -1,7 +1,6 @@
 import React from 'react';
 import { DriverStanding } from '../types';
 import { cn } from '../lib/utils';
-import { Trophy, Timer, Play, Flag } from 'lucide-react';
 
 interface StandingsProps {
   standings: DriverStanding[];
@@ -51,6 +50,11 @@ export function Standings({ standings }: StandingsProps) {
                 )}>
                   {driver.name.split(' ')[1] || driver.name}
                 </span>
+                {driver.penalties && driver.penalties.length > 0 && (
+                  <span className="text-[7px] bg-rose-500/80 text-white px-1 py-0.5 rounded-sm font-bold shadow-[0_0_4px_rgba(244,63,94,0.5)] flex items-center shrink-0">
+                    {driver.penalties.map(p => p.type === 'time' ? `+${p.amount}s` : p.type === 'drive-through' ? 'DT' : 'STOP/GO').join(', ')}
+                  </span>
+                )}
               </div>
             </div>
             

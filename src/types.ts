@@ -54,6 +54,7 @@ export interface DriverStanding {
   lap: number;
   status: 'active' | 'pit' | 'out';
   isPlayer?: boolean;
+  penalties?: { type: 'time' | 'drive-through' | 'stop-go', amount?: number, reason: string, served?: boolean }[];
 }
 
 export interface TuningAdvice {

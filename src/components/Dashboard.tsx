@@ -1,7 +1,6 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { TelemetryData } from '../types';
-import { Gauge, Zap, Wind, Thermometer } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface DashboardProps {
@@ -33,8 +32,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         {/* Cl / Cd Timeline */}
         <div className="bg-white/5 rounded p-2 flex flex-col">
           <span className="text-[8px] text-slate-500 uppercase mb-2 font-mono">Coefficients (Cl & Cd)</span>
-          <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="flex-1 min-h-[120px]">
+            <ResponsiveContainer width="100%" height={120}>
               <LineChart data={data.slice(-50)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
                 <XAxis dataKey="timestamp" hide />
@@ -53,8 +52,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         {/* Downforce Distribution Chart */}
         <div className="bg-white/5 rounded p-2 flex flex-col">
           <span className="text-[8px] text-slate-500 uppercase mb-2 font-mono">Downforce Load (N)</span>
-          <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="flex-1 min-h-[120px]">
+            <ResponsiveContainer width="100%" height={120}>
               <AreaChart data={data.slice(-50)}>
                 <defs>
                   <linearGradient id="colorDf" x1="0" y1="0" x2="0" y2="1">
@@ -96,7 +95,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data }) => {
   );
 };
 
-const DistributionBar = ({ label, value, color }: any) => (
+const DistributionBar = ({ label, value, color }: { label: string, value?: number, color: string }) => (
   <div className="flex flex-col">
     <div className="flex justify-between text-[8px] font-mono mb-1">
       <span className="text-slate-500 uppercase">{label}</span>
@@ -108,7 +107,7 @@ const DistributionBar = ({ label, value, color }: any) => (
   </div>
 );
 
-const MetricCard = ({ label, value, unit, icon, color }: any) => (
+const MetricCard = ({ label, value, unit, icon, color }: { label: string, value: string | number, unit: string, icon: React.ReactNode, color: string }) => (
   <div className="bg-neutral-900/50 p-4 rounded-xl border border-white/5 hover:border-white/20 transition-colors">
     <div className="flex justify-between items-center mb-2">
       <span className="text-[10px] font-mono text-neutral-500 tracking-widest uppercase">{label}</span>
@@ -121,7 +120,7 @@ const MetricCard = ({ label, value, unit, icon, color }: any) => (
   </div>
 );
 
-const BalanceRow = ({ label, value, active }: any) => (
+const BalanceRow = ({ label, value, active }: { label: string, value: number, active?: boolean }) => (
   <div>
     <div className="flex justify-between text-[10px] font-mono text-neutral-400 mb-1">
       <span>{label}</span>

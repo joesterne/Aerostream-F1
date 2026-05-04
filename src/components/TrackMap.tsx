@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Maximize2, Minimize2, Info } from 'lucide-react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 // Standardized closed loop F1 track paths

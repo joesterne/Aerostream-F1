@@ -740,7 +740,7 @@ const TireNode = ({ label, temp, wear }: { label: string; temp: number; wear: nu
   );
 };
 
-const ViewportBtn = ({ label, active, onClick }: any) => (
+const ViewportBtn = ({ label, active, onClick }: { label: string, active?: boolean, onClick: () => void }) => (
   <button 
     onClick={onClick}
     className={cn(

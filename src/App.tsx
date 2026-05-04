@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { motion, AnimatePresence } from 'motion/react';
 import { WindTunnel } from './components/WindTunnel';
@@ -13,21 +13,11 @@ import { Standings } from './components/Standings';
 import { TelemetryData, AeroSetup, SimulationState, TuningAdvice, DriverStanding, TireType } from './types';
 import { getAeroAdvice } from './services/geminiService';
 import { 
-  Trophy, 
-  Settings, 
-  Activity, 
-  Cpu, 
-  CloudRain, 
-  Users, 
-  ChevronRight, 
-  Play, 
-  Square,
   Sparkles,
   Save,
-  BarChart3,
   Timer,
   Wrench,
-  AlertTriangle
+  Cpu
 } from 'lucide-react';
 import { cn } from './lib/utils';
 
@@ -93,7 +83,6 @@ export default function App() {
   });
   const [aiAdvice, setAiAdvice] = useState<TuningAdvice | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'aero' | 'team' | 'career'>('aero');
   const [standings, setStandings] = useState<DriverStanding[]>([
     { id: '1', position: 1, name: 'Max Verstappen', number: 1, team: '#1e41ff', gap: 'Leader', interval: 'Leader', lap: 42, status: 'active' },
     { id: '2', position: 2, name: 'Lando Norris', number: 4, team: '#ff8700', gap: '+1.432s', interval: '+1.432s', lap: 42, status: 'active' },
@@ -141,6 +130,44 @@ export default function App() {
     fetchWeather();
   }, [simState.track]);
 
+  const [sessionElapsedMs, setSessionElapsedMs] = useState<number>(0);
+  const sessionStartTimeRef = useRef<number | null>(null);
+  const [realClock, setRealClock] = useState('00:00:00.000 UTC');
+
+  useEffect(() => {
+    const int = setInterval(() => {
+      const ms = Date.now();
+      const date = new Date(ms);
+      setRealClock(`${date.getUTCHours().toString().padStart(2, '0')}:${date.getUTCMinutes().toString().padStart(2, '0')}:${date.getUTCSeconds().toString().padStart(2, '0')}.${Math.floor((ms % 1000) / 10).toString().padStart(2, '0')} UTC`);
+    }, 50);
+    return () => clearInterval(int);
+  }, []);
+
+  useEffect(() => {
+    if (simState.isActive) {
+      sessionStartTimeRef.current = Date.now() - sessionElapsedMs;
+      const interval = setInterval(() => {
+        if (sessionStartTimeRef.current) {
+          setSessionElapsedMs(Date.now() - sessionStartTimeRef.current);
+        }
+      }, 50);
+      return () => clearInterval(interval);
+    }
+  }, [simState.isActive]);
+
+  const formatSessionTime = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const milliseconds = ms % 1000;
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${Math.floor(milliseconds / 10).toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${Math.floor(milliseconds / 10).toString().padStart(2, '0')}`;
+  };
+
   const handleTelemetryUpdate = useCallback((newData: Partial<TelemetryData>) => {
     setTelemetry(prev => {
       const updated = [...prev, { ...newData, timestamp: Date.now() } as TelemetryData];
@@ -177,22 +204,94 @@ export default function App() {
 
     const interval = setInterval(() => {
       setStandings(prev => {
-        // slightly modify gaps just to show activity
-        return prev.map((driver, index) => {
-          if (index === 0) return driver; // leader
+        // 1. Calculate base total gap to leader for accurate tracking
+        let currentGapToLeader = 0;
+        const driverGaps = prev.map((d, index) => {
+           let totalGap = 0;
+           if (index === 0) {
+             totalGap = 0;
+           } else if (d.status !== 'active') {
+             totalGap = Infinity;
+           } else {
+             let intervalSec = parseFloat(d.interval.replace('+', '').replace('s', ''));
+             if (isNaN(intervalSec)) intervalSec = 0;
+             currentGapToLeader += intervalSec;
+             totalGap = currentGapToLeader;
+           }
+           return { ...d, totalGap };
+        });
+
+        // 2. Apply natural changes and random AI penalties
+        const updated = driverGaps.map(driver => {
+          if (driver.position === 1 && driver.totalGap === 0) return driver; // leader
           if (driver.status !== 'active') return driver;
 
-          // random small change in interval
+          // random small change in gap
           const timeChange = (Math.random() - 0.5) * 0.1;
-          const currentIntervalSeconds = parseFloat(driver.interval.replace('+', '').replace('s', ''));
-          if (isNaN(currentIntervalSeconds)) return driver;
-          
-          const newInterval = Math.max(0.1, currentIntervalSeconds + timeChange);
+          driver.totalGap += timeChange;
+
+          // Apply AI Penalty logic
+          let newPenalties = [...(driver.penalties || [])];
+          // Slightly higher probability to see them more often during simulation, but still rare
+          if (!driver.isPlayer && Math.random() < 0.008 && newPenalties.length < 2) {
+             const rand = Math.random();
+             let type: 'time' | 'drive-through' | 'stop-go' = 'time';
+             let amount = 5;
+             let reason = 'Track Limits';
+
+             if (rand > 0.95) {
+               type = 'stop-go';
+               amount = 30; // 30s for Stop-Go
+               reason = 'Ignoring Yellow Flags';
+             } else if (rand > 0.8) {
+               type = 'drive-through';
+               amount = 20; // 20s for Drive-Through
+               reason = 'Pit Lane Speeding';
+             } else if (rand > 0.4) {
+               type = 'time';
+               amount = 10;
+               reason = 'Causing a Collision';
+             }
+
+             newPenalties.push({ type, amount, reason });
+             driver.totalGap += amount; // Apply penalty to total gap directly for effect
+          }
           
           return {
             ...driver,
-            interval: `+${newInterval.toFixed(3)}s`
+            penalties: newPenalties
           };
+        });
+
+        // 3. Sort by total gap
+        updated.sort((a, b) => {
+           if (a.status !== 'active' && b.status !== 'active') return 0;
+           if (a.status !== 'active') return 1;
+           if (b.status !== 'active') return -1;
+           return a.totalGap - b.totalGap;
+        });
+
+        // 4. Re-assign positions and recalculate correct intervals
+        let prevGap = 0;
+        return updated.map((d, index) => {
+           if (d.status !== 'active') {
+             return { ...d, position: index + 1 };
+           }
+           if (index === 0) {
+             prevGap = d.totalGap;
+             // Remove totalGap from final object
+             const { totalGap, ...rest } = d as any;
+             return { ...rest, position: 1, gap: 'Leader', interval: 'Leader' };
+           }
+           const intervalValue = d.totalGap - prevGap;
+           prevGap = d.totalGap;
+           const { totalGap, ...rest } = d as any;
+           return { 
+             ...rest, 
+             position: index + 1,
+             gap: `+${d.totalGap.toFixed(3)}s`,
+             interval: `+${Math.max(0, intervalValue).toFixed(3)}s`
+           };
         });
       });
     }, 1000);
@@ -379,10 +478,16 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          <div className={cn("px-3 py-1 flex items-center gap-2 border rounded text-[10px] font-bold uppercase transition-colors shadow-inner", 
+            simState.isActive ? "bg-[#050505] border-emerald-500/30 text-emerald-400" : "bg-[#050505] border-white/10 text-slate-500")}
+          >
+            <Timer className={cn("w-3 h-3", simState.isActive && "animate-pulse")} />
+            {formatSessionTime(sessionElapsedMs)}
+          </div>
           <div className={cn("px-3 py-1 border rounded text-[10px] font-bold uppercase transition-colors", simState.isActive ? "bg-rose-500/10 border-rose-500/20 text-rose-500" : "bg-white/5 border-white/10 text-slate-500")}>
             {simState.isActive ? 'Telemetry Active' : 'Standby'}
           </div>
-          <div className="text-xs font-mono text-slate-400">14:22:09.432 UTC</div>
+          <div className="text-xs font-mono text-slate-400 w-[110px] text-right">{realClock}</div>
         </div>
       </header>
 
@@ -781,35 +886,35 @@ export default function App() {
   );
 }
 
-const HeaderMetric = ({ label, value }: any) => (
+const HeaderMetric = ({ label, value }: { label: string, value: string | undefined }) => (
   <div className="flex flex-col">
     <span className="text-[10px] text-slate-500 uppercase font-mono">{label}</span>
     <span className="text-xs font-bold text-white tracking-widest">{value}</span>
   </div>
 );
 
-const TelemetryRow = ({ label, value, color }: any) => (
+const TelemetryRow = ({ label, value, color }: { label: string, value: string, color: string }) => (
   <div className="flex justify-between items-center bg-white/5 p-2 rounded">
     <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">{label}</span>
     <span className={cn("text-xs font-mono font-bold tracking-widest", color)}>{value}</span>
   </div>
 );
 
-const HealthStatus = ({ label, status }: any) => (
+const HealthStatus = ({ label, status }: { label: string, status: 'ok' | 'warn' }) => (
   <div className="flex items-center gap-2 text-[10px]">
     <div className={cn("w-1.5 h-1.5 rounded-full", status === 'ok' ? "bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]" : "bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]")}></div>
     <span className="tracking-tight uppercase font-mono">{label}</span>
   </div>
 );
 
-const WeatherMiniCard = ({ label, value, accent }: any) => (
+const WeatherMiniCard = ({ label, value, accent }: { label: string, value: string, accent?: boolean }) => (
   <div className="bg-white/5 py-1 px-2 rounded">
     <span className="text-[8px] block text-slate-500 uppercase tracking-tighter">{label}</span>
     <span className={cn("text-xs font-mono font-bold", accent ? "text-emerald-400" : "text-white")}>{value}</span>
   </div>
 );
 
-const AnalysisMetric = ({ label, value, percent, color }: any) => (
+const AnalysisMetric = ({ label, value, percent, color }: { label: string, value: string, percent: number, color: string }) => (
   <div className="flex flex-col">
     <div className="flex justify-between mb-1">
       <span className="text-[10px] text-slate-500 font-mono uppercase tracking-tighter">{label}</span>
@@ -821,7 +926,7 @@ const AnalysisMetric = ({ label, value, percent, color }: any) => (
   </div>
 );
 
-const SliderControl = ({ label, value, unit, min, max, onChange, dense }: any) => (
+const SliderControl = ({ label, value, unit, min, max, onChange, dense }: { label: string, value: number, unit: string, min: number, max: number, onChange: (v: number) => void, dense?: boolean }) => (
   <div>
     <div className="flex justify-between text-[10px] mb-1">
       <span className="text-slate-500 uppercase font-mono tracking-widest">{label}</span>

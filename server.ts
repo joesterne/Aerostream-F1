@@ -26,10 +26,6 @@ async function startServer() {
   });
 
   const PORT = 3000;
-
-  // Simple Telemetry Broadcast Simulation for development
-  // In a real scenario, this would receive data from an external F1 sim tool via another port or API
-  let telemetryInterval: NodeJS.Timeout;
   
   io.on("connection", (socket) => {
     console.log("Telemetry client connected:", socket.id);
@@ -58,11 +54,12 @@ async function startServer() {
 
   app.post("/api/advice", async (req, res) => {
     try {
-      fs.appendFileSync("trace.log", "1\n");
-      const ai = new GoogleGenAI({});
-      fs.appendFileSync("trace.log", "2\n");
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY environment variable is required." });
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const prompt = req.body.prompt;
-      fs.appendFileSync("trace.log", "3\n");
       const response = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview", 
         contents: prompt,
@@ -70,7 +67,6 @@ async function startServer() {
           responseMimeType: "application/json"
         }
       });
-      fs.appendFileSync("trace.log", "4\n");
       const responseText = response.text;
       if (!responseText) {
         return res.status(500).json({ error: "No response from AI" });
@@ -78,7 +74,6 @@ async function startServer() {
       const cleanedText = responseText.replace(/```json|```/g, '').trim();
       res.json(JSON.parse(cleanedText));
     } catch (error: any) {
-      fs.appendFileSync("trace.log", "ERR: " + String(error) + "\n");
       console.error("AI Error:", error);
       res.status(500).json({ error: "Failed to generate advice: " + (error?.message || String(error)) });
     }

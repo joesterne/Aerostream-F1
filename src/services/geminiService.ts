@@ -40,7 +40,15 @@ export async function getAeroAdvice(telemetry: TelemetryData[], currentSetup: Ae
     
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(errorText || "HTTP error! status: " + response.status);
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(errorData.error || "HTTP error! status: " + response.status);
+      } catch (e) {
+        if (e instanceof SyntaxError) {
+           throw new Error(errorText || "HTTP error! status: " + response.status);
+        }
+        throw e;
+      }
     }
     
     const data = await response.json();
