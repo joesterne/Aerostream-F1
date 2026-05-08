@@ -31,6 +31,7 @@ export interface AeroSetup {
   rideHeight: number;
   brakeBalance: number;
   tirePressure: number;
+  tireWear: number;
   tireType: TireType;
 }
 

@@ -28,7 +28,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-2 gap-3 min-h-0">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 min-h-0">
         {/* Cl / Cd Timeline */}
         <div className="bg-white/5 rounded p-2 flex flex-col">
           <span className="text-[8px] text-slate-500 uppercase mb-2 font-mono">Coefficients (Cl & Cd)</span>
@@ -70,6 +70,41 @@ export const Dashboard: React.FC<DashboardProps> = ({ data }) => {
                 />
                 <Area type="monotone" dataKey="downforce" stroke="#10b981" fillOpacity={1} fill="url(#colorDf)" strokeWidth={1} name="Total DF" />
               </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Lap Time Chart */}
+        <div className="bg-white/5 rounded p-2 flex flex-col">
+          <span className="text-[8px] text-slate-500 uppercase mb-2 font-mono">Lap Time (s)</span>
+          <div className="flex-1 min-h-[120px]">
+            <ResponsiveContainer width="100%" height={120}>
+              <LineChart data={data.slice(-50)}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                <XAxis 
+                  dataKey="timestamp" 
+                  tickFormatter={(val) => new Date(val).toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' })}
+                  stroke="#444" 
+                  fontSize={8} 
+                  axisLine={false} 
+                  tickLine={false} 
+                />
+                <YAxis 
+                  stroke="#444" 
+                  fontSize={8} 
+                  axisLine={false} 
+                  tickLine={false} 
+                  domain={['auto', 'auto']}
+                  tickFormatter={(val) => val.toFixed(1)}
+                />
+                <Tooltip 
+                  contentStyle={{ background: '#080808', border: '1px solid #333', fontSize: '9px' }}
+                  itemStyle={{ fontSize: '9px' }}
+                  labelFormatter={(label) => new Date(label).toLocaleTimeString()}
+                  formatter={(value: number) => [`${value.toFixed(2)}s`, 'Lap Time']}
+                />
+                <Line type="monotone" dataKey="lapTime" stroke="#f59e0b" dot={false} strokeWidth={2} name="Lap Time" />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </div>

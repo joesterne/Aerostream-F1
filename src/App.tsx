@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from './lib/utils';
 
-const trackCoords: Record<string, { lat: number, lon: number }> = {
+const initialTracks: Record<string, { lat: number, lon: number }> = {
   Silverstone: { lat: 52.0786, lon: -1.0169 },
   Monza: { lat: 45.6156, lon: 9.2811 },
   Monaco: { lat: 43.7347, lon: 7.4206 },
@@ -31,6 +31,10 @@ const trackCoords: Record<string, { lat: number, lon: number }> = {
 };
 
 export default function App() {
+  const [tracks, setTracks] = useState(initialTracks);
+  const [showAddTrack, setShowAddTrack] = useState(false);
+  const [newTrackForm, setNewTrackForm] = useState({ name: '', lat: '', lon: '' });
+
   const [telemetry, setTelemetry] = useState<TelemetryData[]>([]);
   const [setup, setSetup] = useState<AeroSetup>({
     frontWingAngle: 12,
@@ -38,6 +42,7 @@ export default function App() {
     rideHeight: 35,
     brakeBalance: 52,
     tirePressure: 21,
+    tireWear: 0,
     tireType: 'Soft'
   });
   
@@ -48,6 +53,7 @@ export default function App() {
       rideHeight: 35,
       brakeBalance: 52,
       tirePressure: 21,
+      tireWear: 0,
       tireType: 'Soft'
     },
     'Hypercar': {
@@ -56,6 +62,7 @@ export default function App() {
       rideHeight: 50,
       brakeBalance: 55,
       tirePressure: 23,
+      tireWear: 0,
       tireType: 'Medium'
     },
     'GT3': {
@@ -64,6 +71,7 @@ export default function App() {
       rideHeight: 65,
       brakeBalance: 58,
       tirePressure: 25,
+      tireWear: 0,
       tireType: 'Hard'
     }
   });
@@ -99,7 +107,7 @@ export default function App() {
 
   useEffect(() => {
     const fetchWeather = async () => {
-      const coords = trackCoords[simState.track] || trackCoords['Silverstone'];
+      const coords = tracks[simState.track] || tracks['Silverstone'];
       try {
         const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current_weather=true&hourly=relative_humidity_2m`);
         const data = await res.json();
@@ -128,7 +136,7 @@ export default function App() {
       }
     };
     fetchWeather();
-  }, [simState.track]);
+  }, [simState.track, tracks]);
 
   const [sessionElapsedMs, setSessionElapsedMs] = useState<number>(0);
   const sessionStartTimeRef = useRef<number | null>(null);
@@ -474,7 +482,25 @@ export default function App() {
           <div className="h-6 w-[1px] bg-white/10"></div>
           <div className="flex gap-4">
             <HeaderMetric label="Chassis" value="AMR-24 SPEC-C" />
-            <HeaderMetric label="Circuit" value={simState.track} />
+            <div className="flex flex-col">
+              <span className="text-[10px] text-slate-500 uppercase font-mono">Circuit</span>
+              <select 
+                value={simState.track}
+                onChange={(e) => {
+                  if (e.target.value === 'ADD_NEW') {
+                    setShowAddTrack(true);
+                  } else {
+                    setSimState(s => ({ ...s, track: e.target.value }));
+                  }
+                }}
+                className="bg-transparent text-xs font-bold text-white tracking-widest border-none outline-none cursor-pointer appearance-none px-0 py-0 m-0 hover:text-indigo-400 focus:ring-0 [&>option]:bg-slate-900 [&>option]:text-white"
+              >
+                {Object.keys(tracks).map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+                <option value="ADD_NEW" className="text-indigo-400 font-bold">+ Add New Track</option>
+              </select>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -705,6 +731,7 @@ export default function App() {
              <div className="space-y-4">
                 <SliderControl label="BRAKE-BAL" value={setup.brakeBalance} unit="%" min={40} max={70} onChange={v => setSetup(s => ({ ...s, brakeBalance: v }))} dense />
                 <SliderControl label="TIRE-PRES" value={setup.tirePressure} unit="psi" min={18} max={25} onChange={v => setSetup(s => ({ ...s, tirePressure: v }))} dense />
+                <SliderControl label="TIRE-WEAR" value={setup.tireWear} unit="%" min={0} max={100} onChange={v => setSetup(s => ({ ...s, tireWear: v }))} dense />
                 
                 <div className="flex flex-col gap-1 mt-2">
                   <span className="text-[10px] text-slate-500 uppercase font-mono tracking-widest leading-none">Compound</span>
@@ -882,6 +909,80 @@ export default function App() {
           </button>
         </div>
       </footer>
+
+      {showAddTrack && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 w-80 shadow-2xl">
+            <h3 className="text-white font-bold tracking-widest uppercase mb-4 text-sm font-display">Add New Track</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase font-mono tracking-widest">Track Name</label>
+                <input 
+                  type="text" 
+                  value={newTrackForm.name} 
+                  onChange={e => setNewTrackForm(s => ({...s, name: e.target.value}))}
+                  className="w-full bg-[#050505] border border-white/10 rounded px-3 py-2 text-white font-mono text-xs mt-1 outline-none focus:border-indigo-500"
+                  placeholder="e.g. Nürburgring"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] text-slate-500 uppercase font-mono tracking-widest">Latitude</label>
+                  <input 
+                    type="number" 
+                    value={newTrackForm.lat} 
+                    onChange={e => setNewTrackForm(s => ({...s, lat: e.target.value}))}
+                    className="w-full bg-[#050505] border border-white/10 rounded px-3 py-2 text-white font-mono text-xs mt-1 outline-none focus:border-indigo-500"
+                    placeholder="50.334"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 uppercase font-mono tracking-widest">Longitude</label>
+                  <input 
+                    type="number" 
+                    value={newTrackForm.lon} 
+                    onChange={e => setNewTrackForm(s => ({...s, lon: e.target.value}))}
+                    className="w-full bg-[#050505] border border-white/10 rounded px-3 py-2 text-white font-mono text-xs mt-1 outline-none focus:border-indigo-500"
+                    placeholder="6.942"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-6">
+              <button 
+                onClick={() => {
+                  setShowAddTrack(false);
+                  if (simState.track === 'ADD_NEW' || !tracks[simState.track]) {
+                    setSimState(s => ({...s, track: 'Silverstone'}));
+                  }
+                }}
+                className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  const lat = parseFloat(newTrackForm.lat);
+                  const lon = parseFloat(newTrackForm.lon);
+                  if (newTrackForm.name && !isNaN(lat) && !isNaN(lon)) {
+                    setTracks(prev => ({
+                      ...prev,
+                      [newTrackForm.name]: { lat, lon }
+                    }));
+                    setSimState(s => ({ ...s, track: newTrackForm.name }));
+                    setShowAddTrack(false);
+                    setNewTrackForm({ name: '', lat: '', lon: '' });
+                  }
+                }}
+                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold uppercase tracking-widest transition-colors"
+              >
+                Add Track
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

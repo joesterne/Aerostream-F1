@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, MouseEvent as ReactMouseEvent } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Maximize, Minimize } from 'lucide-react';
 import { AeroSetup, TelemetryData } from '../types';
 import { cn } from '../lib/utils';
 
@@ -29,9 +30,29 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
   const latestTelemetryRef = useRef(latestTelemetry);
   const ersModeRef = useRef(ersMode);
   const drsActiveRef = useRef(drsActive);
+  const speedFactorRef = useRef(isSimulating ? 1 : 0);
 
   const [view, setView] = useState<'ISO' | 'ORTHO' | 'FRONT'>('ISO');
   const viewRef = useRef(view);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   useEffect(() => {
     viewRef.current = view;
@@ -215,13 +236,24 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     );
     fanGroup.add(fanCasing);
     
-    const bladeGeo = new THREE.BoxGeometry(0.1, 6.8, 0.6);
-    const bladeMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.5 });
+    const bladeGeo = new THREE.BoxGeometry(0.05, 6.8, 0.8);
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.5, metalness: 0.8 });
     const bladeGroup = new THREE.Group();
-    for (let i = 0; i < 7; i++) {
+    
+    // Add central hub to the fan
+    const hubGeo = new THREE.ConeGeometry(1.2, 1.5, 32);
+    hubGeo.rotateX(-Math.PI / 2); // Pointing forward (towards positive Z natively, but fanGroup is rotated so it points down the tunnel)
+    const hub = new THREE.Mesh(hubGeo, new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9, roughness: 0.3 }));
+    hub.position.z = 0.5;
+    bladeGroup.add(hub);
+
+    const numBlades = 11;
+    for (let i = 0; i < numBlades; i++) {
+       const bladeGeo = new THREE.BoxGeometry(0.1, 3.4, 0.8);
+       bladeGeo.translate(0, 1.7, 0); // Shift origin so blade radiates from the center
        const blade = new THREE.Mesh(bladeGeo, bladeMat);
-       blade.rotation.z = (i * Math.PI * 2) / 7;
-       blade.rotation.y = 0.4; // pitch
+       blade.rotation.z = (i * Math.PI * 2) / numBlades;
+       blade.rotation.y = 0.5; // pitch
        bladeGroup.add(blade);
     }
     fanGroup.add(bladeGroup);
@@ -260,7 +292,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
 
     if (carModel === 'Formula 1') {
       // Chassis Base (sleeker with Capsule)
-      const chassisGeo = new THREE.CapsuleGeometry(0.25, 2.5, 8, 16);
+      const chassisGeo = new THREE.CapsuleGeometry(0.25, 2.5, 32, 64);
       chassisGeo.rotateZ(Math.PI / 2);
       const chassis = new THREE.Mesh(chassisGeo, matPaint);
       chassis.scale.set(1, 0.8, 1.3); // Flatten slightly, widen
@@ -268,7 +300,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       carGroup.add(chassis);
 
       // Floor & Diffuser (Cylinder for rounded front)
-      const floorGeo = new THREE.CylinderGeometry(0.7, 0.7, 4.0, 32);
+      const floorGeo = new THREE.CylinderGeometry(0.7, 0.7, 4.0, 64);
       floorGeo.rotateZ(Math.PI / 2);
       const floor = new THREE.Mesh(floorGeo, matCarbon);
       floor.scale.set(1, 0.05, 1);
@@ -276,7 +308,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       carGroup.add(floor);
       
       // Sidepods (Capsules)
-      const sidepodGeo = new THREE.CapsuleGeometry(0.18, 1.2, 8, 16);
+      const sidepodGeo = new THREE.CapsuleGeometry(0.18, 1.2, 32, 64);
       sidepodGeo.rotateZ(Math.PI / 2);
       const sidepodL = new THREE.Mesh(sidepodGeo, matPaint);
       sidepodL.scale.set(1, 0.8, 1.2);
@@ -286,44 +318,44 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       carGroup.add(sidepodL, sidepodR);
 
       // Engine Cover & Airbox
-      const engineGeo = new THREE.CylinderGeometry(0.05, 0.2, 1.4, 16);
+      const engineGeo = new THREE.CylinderGeometry(0.05, 0.2, 1.4, 64);
       engineGeo.rotateZ(-Math.PI / 2);
       const engineCover = new THREE.Mesh(engineGeo, matPaint);
       engineCover.position.set(-0.5, 0.55, 0);
       engineCover.scale.set(1, 1, 0.6);
 
-      const engineRedDecalGeo = new THREE.CylinderGeometry(0.22, 0.37, 0.8, 32);
+      const engineRedDecalGeo = new THREE.CylinderGeometry(0.22, 0.37, 0.8, 64);
       engineRedDecalGeo.rotateZ(Math.PI / 2);
       const engineRedDecal = new THREE.Mesh(engineRedDecalGeo, matRed);
       engineRedDecal.position.set(-0.5, 0.55, 0);
       engineRedDecal.scale.set(1, 1, 0.62);
 
-      const airboxGeo = new THREE.CapsuleGeometry(0.12, 0.4, 8, 16);
+      const airboxGeo = new THREE.CapsuleGeometry(0.12, 0.4, 32, 64);
       const airbox = new THREE.Mesh(airboxGeo, matYellow);
       airbox.position.set(-0.1, 0.75, 0);
       airbox.rotation.z = -Math.PI / 8;
       carGroup.add(engineCover, engineRedDecal, airbox);
 
       // Halo
-      const halo = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.03, 8, 24, Math.PI), matCarbon);
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.03, 32, 64, Math.PI), matCarbon);
       halo.position.set(0.3, 0.62, 0);
       halo.rotation.y = Math.PI / 2;
       halo.rotation.x = -Math.PI / 8;
       carGroup.add(halo);
 
       // Nose
-      const noseGeo = new THREE.CylinderGeometry(0.08, 0.2, 1.2, 16);
+      const noseGeo = new THREE.CylinderGeometry(0.08, 0.2, 1.2, 64);
       noseGeo.rotateZ(-Math.PI / 2);
       const nose = new THREE.Mesh(noseGeo, matPaint);
       nose.scale.set(1, 0.5, 1.2);
       nose.position.set(1.9, 0.25, 0);
       
-      const noseTipGeo = new THREE.SphereGeometry(0.08, 16, 16);
+      const noseTipGeo = new THREE.SphereGeometry(0.08, 64, 64);
       const noseTip = new THREE.Mesh(noseTipGeo, matYellow);
       noseTip.scale.set(1, 0.5, 1.2);
       noseTip.position.set(2.5, 0.25, 0);
 
-      const noseRedDecalGeo = new THREE.CylinderGeometry(0.12, 0.22, 0.6, 32);
+      const noseRedDecalGeo = new THREE.CylinderGeometry(0.12, 0.22, 0.6, 64);
       noseRedDecalGeo.rotateZ(Math.PI / 2);
       const noseRedDecal = new THREE.Mesh(noseRedDecalGeo, matRed);
       noseRedDecal.scale.set(1, 0.52, 1.25);
@@ -332,19 +364,19 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       carGroup.add(nose, noseTip, noseRedDecal);
 
       // F1 Front Wing
-      const fwMainGeo = new THREE.CapsuleGeometry(0.02, 1.8, 8, 16);
+      const fwMainGeo = new THREE.CapsuleGeometry(0.02, 1.8, 32, 64);
       fwMainGeo.rotateX(Math.PI / 2);
       const fwMain = new THREE.Mesh(fwMainGeo, matCarbon);
       fwMain.scale.set(8, 1, 1);
       
-      const fwFlapGeo = new THREE.CapsuleGeometry(0.015, 1.7, 8, 16);
+      const fwFlapGeo = new THREE.CapsuleGeometry(0.015, 1.7, 32, 64);
       fwFlapGeo.rotateX(Math.PI / 2);
       const fwFlap1 = new THREE.Mesh(fwFlapGeo, matRed);
       fwFlap1.scale.set(12, 1, 1);
       fwFlap1.position.set(-0.15, 0.05, 0);
       fwFlap1.rotation.z = Math.PI / 16;
       
-      const fwEndplateGeo = new THREE.CapsuleGeometry(0.15, 0.1, 8, 16);
+      const fwEndplateGeo = new THREE.CapsuleGeometry(0.15, 0.1, 32, 64);
       fwEndplateGeo.rotateZ(Math.PI / 2);
       const fwEndplateL = new THREE.Mesh(fwEndplateGeo, matPaint);
       fwEndplateL.scale.set(1, 1, 0.2);
@@ -357,12 +389,12 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       carGroup.add(fwGroup);
 
       // F1 Rear Wing
-      const rwMainGeo = new THREE.CapsuleGeometry(0.02, 1.4, 8, 16);
+      const rwMainGeo = new THREE.CapsuleGeometry(0.02, 1.4, 32, 64);
       rwMainGeo.rotateX(Math.PI / 2);
       const rwMain = new THREE.Mesh(rwMainGeo, matPaint);
       rwMain.scale.set(12, 1, 1);
       
-      const rwTopGeo = new THREE.CapsuleGeometry(0.015, 1.4, 8, 16);
+      const rwTopGeo = new THREE.CapsuleGeometry(0.015, 1.4, 32, 64);
       rwTopGeo.rotateX(Math.PI / 2);
       const rwTop = new THREE.Mesh(rwTopGeo, matRed);
       rwTop.scale.set(12, 1, 1);
@@ -370,7 +402,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       rwTop.position.set(-0.1, 0.15, 0);
       rwTop.rotation.z = -Math.PI / 16;
       
-      const rwEndGeo = new THREE.CapsuleGeometry(0.35, 0.35, 8, 16);
+      const rwEndGeo = new THREE.CapsuleGeometry(0.35, 0.35, 32, 64);
       rwEndGeo.rotateZ(Math.PI / 2);
       const rwEndplateL = new THREE.Mesh(rwEndGeo, matPaint);
       rwEndplateL.scale.set(1, 1, 0.1);
@@ -385,7 +417,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       carGroup.add(rwGroup);
 
       // F1 Suspension
-      const flSusp = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6), matCarbon);
+      const flSusp = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6, 32), matCarbon);
       flSusp.position.set(1.2, 0.3, 0.5);
       flSusp.rotation.x = Math.PI / 2;
       carGroup.add(flSusp);
@@ -400,7 +432,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     } else if (carModel === 'Hypercar') {
       // Hypercar Chassis (Wider, closed cockpit)
       // Main Body Capsule
-      const bodyGeo = new THREE.CapsuleGeometry(0.6, 2.5, 16, 32);
+      const bodyGeo = new THREE.CapsuleGeometry(0.6, 2.5, 32, 64);
       bodyGeo.rotateZ(Math.PI / 2);
       const chassis = new THREE.Mesh(bodyGeo, matPaint);
       chassis.scale.set(1, 0.35, 1.15); 
@@ -408,7 +440,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       carGroup.add(chassis);
 
       // Floor & Diffuser (Cylinder based)
-      const floorGeo = new THREE.CylinderGeometry(0.9, 0.9, 4.4, 32);
+      const floorGeo = new THREE.CylinderGeometry(0.9, 0.9, 4.4, 64);
       floorGeo.rotateZ(Math.PI / 2);
       const floor = new THREE.Mesh(floorGeo, matCarbon);
       floor.scale.set(1, 0.05, 1);
@@ -416,14 +448,14 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       carGroup.add(floor);
 
       // Cockpit Canopy (rounded top)
-      const canopyGeo = new THREE.SphereGeometry(0.6, 32, 16);
+      const canopyGeo = new THREE.SphereGeometry(0.6, 64, 64);
       const canopy = new THREE.Mesh(canopyGeo, matCarbon);
       canopy.scale.set(1.4, 0.6, 0.8);
       canopy.position.set(0, 0.65, 0);
       carGroup.add(canopy);
       
       // LMP Nose
-      const noseGeo = new THREE.ConeGeometry(0.7, 1.2, 32);
+      const noseGeo = new THREE.ConeGeometry(0.7, 1.2, 64);
       noseGeo.rotateZ(-Math.PI / 2);
       const nose = new THREE.Mesh(noseGeo, matPaint);
       nose.scale.set(1, 0.25, 0.9);
@@ -436,7 +468,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       carGroup.add(fin);
 
       // LMP Front Wing setup
-      const fwMainGeo = new THREE.CylinderGeometry(0.04, 0.01, 1.8, 16);
+      const fwMainGeo = new THREE.CylinderGeometry(0.04, 0.01, 1.8, 64);
       fwMainGeo.rotateX(Math.PI / 2);
       const fwMain = new THREE.Mesh(fwMainGeo, matCarbon);
       fwMain.scale.set(6, 1, 1);
@@ -468,7 +500,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     } else {
       // GT3 Model
       // GT3 Chassis (Boxier but smoothed)
-      const bodyGeo = new THREE.CapsuleGeometry(0.75, 2.2, 16, 16);
+      const bodyGeo = new THREE.CapsuleGeometry(0.75, 2.2, 32, 64);
       bodyGeo.rotateZ(Math.PI / 2);
       const chassis = new THREE.Mesh(bodyGeo, matPaint);
       chassis.scale.set(1, 0.55, 1.0);
@@ -484,14 +516,14 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       carGroup.add(floor);
 
       // Cabin / Roof (smoothed)
-      const cabinGeo = new THREE.SphereGeometry(0.7, 32, 16);
+      const cabinGeo = new THREE.SphereGeometry(0.7, 64, 64);
       const cabin = new THREE.Mesh(cabinGeo, matCarbon);
       cabin.scale.set(1.1, 0.6, 0.8);
       cabin.position.set(-0.1, 0.7, 0);
       carGroup.add(cabin);
 
       // Hood
-      const hoodGeo = new THREE.CylinderGeometry(0.2, 0.8, 1.4, 16);
+      const hoodGeo = new THREE.CylinderGeometry(0.2, 0.8, 1.4, 64);
       hoodGeo.rotateZ(-Math.PI / 2);
       const hood = new THREE.Mesh(hoodGeo, matPaint);
       hood.scale.set(1, 0.3, 1.1);
@@ -542,18 +574,84 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     // Wheels (Common to all models)
     const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.4, 64);
     wheelGeo.rotateX(Math.PI / 2);
-    const matWheel = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9 });
-    const matWheelRim = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.5 });
+    // Visual indicators of wear
+    const wearFactor = (setup.tireWear || 0) / 100;
+    
+    let tireColor = new THREE.Color(0x050505);
+    let tireRoughness = 0.9;
+    let tireWireframe = false;
+    let rimColor = new THREE.Color(0x111111);
+
+    if (wearFactor >= 0.9) {
+      // Severe wear (cords showing, heavy graining)
+      tireColor = new THREE.Color(0x3a3a3a); // Lighter grey/brown
+      tireRoughness = 1.0;
+      tireWireframe = true; // Simulates cords/severe blistering
+    } else if (wearFactor >= 0.7) {
+      // Moderate wear (graining)
+      tireColor = new THREE.Color(0x242424); // Dustier grey
+      tireRoughness = 0.98;
+    } else {
+      // Normal wear interpolation
+      const baseColor = new THREE.Color(0x050505);
+      const lightlyWornColor = new THREE.Color(0x111111);
+      tireColor = baseColor.clone().lerp(lightlyWornColor, wearFactor / 0.7);
+      tireRoughness = 0.9 + (wearFactor * 0.05);
+    }
+    
+    // Tire Compound specific visuals
+    let isGrooved = false;
+    if (setup.tireType === 'Intermediate') {
+      tireRoughness = Math.max(0.4, tireRoughness - 0.2); // Shinier/wetter
+      tireColor.lerp(new THREE.Color(0x1a1a1a), 0.5); // Greying from deeper tread pattern
+      isGrooved = true;
+    } else if (setup.tireType === 'Wet') {
+      tireRoughness = Math.max(0.2, tireRoughness - 0.4); // Very shiny/wet
+      tireColor.lerp(new THREE.Color(0x222222), 0.7); // Noticeable greying
+      isGrooved = true;
+    }
+    
+    const matWheel = new THREE.MeshStandardMaterial({ 
+      color: tireColor, 
+      roughness: tireRoughness,
+      wireframe: tireWireframe
+    });
+    
+    const matGroove = new THREE.MeshStandardMaterial({
+      color: 0x010101,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.3
+    });
+    const matWheelRim = new THREE.MeshStandardMaterial({ color: rimColor, metalness: 0.9, roughness: 0.5 });
     
     const wheels: THREE.Group[] = [];
     wheelPositions.forEach(pos => {
       const wheelGroup = new THREE.Group();
-      const tire = new THREE.Mesh(wheelGeo, matWheel);
-      const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.41, 32), matWheelRim);
+      const tireMat = matWheel.clone();
+      tireMat.userData.originalColor = tireColor.clone();
+      const tire = new THREE.Mesh(wheelGeo, tireMat);
+      
+      if (isGrooved) {
+        // Add slightly larger wireframe to represent grooved tire treads
+        const grooveGeo = new THREE.CylinderGeometry(0.355, 0.355, 0.39, 48, 8);
+        grooveGeo.rotateX(Math.PI / 2);
+        const grooveMesh = new THREE.Mesh(grooveGeo, matGroove);
+        tire.add(grooveMesh);
+      }
+      
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.41, 64), matWheelRim);
       rim.rotation.x = Math.PI / 2;
       
-      const stripeGeo = new THREE.TorusGeometry(0.3, 0.03, 16, 64);
-      const stripeL = new THREE.Mesh(stripeGeo, matYellow);
+      let stripeColor = 0xecca00; // Medium
+      if (setup.tireType === 'Soft') stripeColor = 0xcc0000;
+      else if (setup.tireType === 'Hard') stripeColor = 0xffffff;
+      else if (setup.tireType === 'Intermediate') stripeColor = 0x10b981;
+      else if (setup.tireType === 'Wet') stripeColor = 0x0077ff;
+      const matStripe = new THREE.MeshStandardMaterial({ color: stripeColor, roughness: 0.4, metalness: 0.1 });
+      
+      const stripeGeo = new THREE.TorusGeometry(0.3, 0.03, 32, 128);
+      const stripeL = new THREE.Mesh(stripeGeo, matStripe);
       
       const isRight = pos[2] < 0;
       if (isRight) {
@@ -562,16 +660,150 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
         stripeL.position.z = 0.205;
       }
       
+      wheelGroup.userData.isWheel = true;
       wheelGroup.add(tire, rim, stripeL);
       wheelGroup.position.set(pos[0], pos[1] - rhOffset, pos[2]);
       carGroup.add(wheelGroup);
       wheels.push(wheelGroup);
     });
 
+    // --- LEGO BLOCKIFIER ---
+    const studCanvas = document.createElement('canvas');
+    studCanvas.width = 128;
+    studCanvas.height = 128;
+    const ctx = studCanvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 128, 128);
+      ctx.beginPath();
+      ctx.arc(64, 64, 40, 0, Math.PI * 2);
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fill();
+      ctx.strokeStyle = '#dfdfdf';
+      ctx.lineWidth = 12;
+      ctx.stroke();
+    }
+    const studTexBase = new THREE.CanvasTexture(studCanvas);
+    studTexBase.wrapS = THREE.RepeatWrapping;
+    studTexBase.wrapT = THREE.RepeatWrapping;
+
+    carGroup.traverse((child) => {
+      let isWheel = false;
+      let parent: THREE.Object3D | null = child.parent;
+      while(parent) {
+         if(parent.userData.isWheel) isWheel = true;
+         parent = parent.parent;
+      }
+      if (isWheel || child.userData.isWheel) return;
+
+      const mesh = child as THREE.Mesh;
+      if (mesh.isMesh) {
+        mesh.geometry.computeBoundingBox();
+        if (mesh.geometry.boundingBox) {
+          const size = new THREE.Vector3();
+          mesh.geometry.boundingBox.getSize(size);
+          
+          let bx = size.x;
+          let by = size.y;
+          let bz = size.z;
+          
+          if (bx < 0.05) bx = 0.05;
+          if (by < 0.05) by = 0.05;
+          if (bz < 0.05) bz = 0.05;
+          
+          mesh.geometry = new THREE.BoxGeometry(bx, by, bz);
+          
+          if (mesh.material && !Array.isArray(mesh.material)) {
+            const oldMat = mesh.material as THREE.MeshStandardMaterial;
+            const newMat = oldMat.clone();
+            newMat.roughness = 0.1;
+            newMat.metalness = 0.0;
+            
+            const tex = studTexBase.clone();
+            tex.needsUpdate = true;
+            tex.repeat.set(Math.max(1, Math.ceil(bx / 0.15)), Math.max(1, Math.ceil(bz / 0.15)));
+            newMat.map = tex;
+            
+            mesh.material = newMat;
+          }
+        }
+      }
+    });
+    // --- END LEGO BLOCKIFIER ---
+
     // Initial Car placement
     wheelsRef.current = wheels;
     carGroup.position.y = rhOffset;
     scene.add(carGroup);
+    
+    // --- Water Spray System (For Wet/Intermediate Tires) ---
+    const isWet = setup.tireType === 'Wet' || setup.tireType === 'Intermediate';
+    const sprayParticles = new THREE.Points(); // placeholder
+    let sprayPos: Float32Array;
+    let sprayVel: Float32Array;
+    let sprayLife: Float32Array;
+    const sprayCount = setup.tireType === 'Wet' ? 2000 : (setup.tireType === 'Intermediate' ? 800 : 0);
+    
+    if (sprayCount > 0) {
+      sprayPos = new Float32Array(sprayCount * 3);
+      sprayVel = new Float32Array(sprayCount * 3);
+      sprayLife = new Float32Array(sprayCount);
+      const sprayColor = new Float32Array(sprayCount * 3);
+      
+      const sCanvas = document.createElement('canvas');
+      sCanvas.width = 16;
+      sCanvas.height = 16;
+      const sCtx = sCanvas.getContext('2d');
+      if (sCtx) {
+        const grad = sCtx.createRadialGradient(8, 8, 0, 8, 8, 8);
+        grad.addColorStop(0, 'rgba(200, 220, 255, 0.6)');
+        grad.addColorStop(1, 'rgba(200, 220, 255, 0)');
+        sCtx.fillStyle = grad;
+        sCtx.fillRect(0, 0, 16, 16);
+      }
+      const sprayTex = new THREE.CanvasTexture(sCanvas);
+      
+      for(let i=0; i<sprayCount; i++) {
+        // distribute to 4 wheels
+        const wheelIdx = i % 4;
+        const wPos = wheelPositions[wheelIdx] || [0,0,0];
+        // behind tire
+        sprayPos[i * 3] = wPos[0] - 0.4 - Math.random() * 2.0; 
+        sprayPos[i * 3 + 1] = 0.1 + Math.random() * 0.5;
+        sprayPos[i * 3 + 2] = wPos[2] + (Math.random() - 0.5) * 0.6;
+        
+        sprayVel[i * 3] = -0.1 - Math.random() * 0.2;
+        sprayVel[i * 3 + 1] = 0.05 + Math.random() * 0.15;
+        sprayVel[i * 3 + 2] = (Math.random() - 0.5) * 0.05;
+        
+        sprayLife[i] = Math.random(); 
+        
+        sprayColor[i*3] = 0.7;
+        sprayColor[i*3+1] = 0.8;
+        sprayColor[i*3+2] = 1.0;
+      }
+      
+      const sprayGeo = new THREE.BufferGeometry();
+      sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3));
+      sprayGeo.setAttribute('color', new THREE.BufferAttribute(sprayColor, 3));
+      sprayGeo.setAttribute('life', new THREE.BufferAttribute(sprayLife, 1));
+      
+      const sprayMat = new THREE.PointsMaterial({
+        size: 0.6,
+        vertexColors: true,
+        transparent: true,
+        opacity: setup.tireType === 'Wet' ? 0.4 : 0.2,
+        map: sprayTex,
+        depthWrite: false,
+        sizeAttenuation: true,
+        blending: THREE.AdditiveBlending
+      });
+      
+      sprayParticles.geometry = sprayGeo;
+      sprayParticles.material = sprayMat;
+      scene.add(sprayParticles);
+    }
+    // --- End Water Spray System ---
 
     // 5. Flow Visualization System
     const particleCount = 4000;
@@ -631,6 +863,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     });
 
     const particles = new THREE.Points(pGeometry, pMaterial);
+    particles.frustumCulled = false;
     scene.add(particles);
     cloudRef.current = particles;
 
@@ -641,6 +874,25 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       frameId = requestAnimationFrame(animate);
 
       controls.update();
+
+      // Smooth speed up / down
+      if (isSimulating) {
+        speedFactorRef.current += (1 - speedFactorRef.current) * 0.05;
+      } else {
+        speedFactorRef.current += (0 - speedFactorRef.current) * 0.02;
+      }
+      
+      const currentSpeedFactor = Math.max(0, speedFactorRef.current);
+
+      // Animate wheels and fan (always, based on speedFactor)
+      if (fanBladeRef.current) {
+        // Add a base idle rotation if desired, but 0 when fully stopped is fine.
+        fanBladeRef.current.rotation.z -= currentSpeedFactor * 1.5; 
+      }
+      wheelsRef.current.forEach(w => w.rotation.z -= currentSpeedFactor * 1.2);
+      if (beltMatRef.current && beltMatRef.current.map) {
+        beltMatRef.current.map.offset.x -= currentSpeedFactor * 0.15;
+      }
 
       if (isSimulating) {
         const pos = pGeometry.attributes.position.array as Float32Array;
@@ -669,23 +921,56 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
           pos[i * 3] -= pVelocities[i]; // Move against X
 
           // Flow dynamics over the car 
-          // Car bounds approx X from 2.5 to -2.0, Y from 0 to 1.2
           const px = pos[i * 3];
           let py = pos[i * 3 + 1];
-          const pz = pos[i * 3 + 2];
+          let pz = pos[i * 3 + 2];
           
-          if (px > -2.5 && px < 2.8 && Math.abs(pz) < 1.2) {
-            // Nose up-kick
-            if (px < 2.5 && px > 1.0) {
-               py += 0.01;
-            }
-            // Halo and engine cover up-flow
-            if (px < 1.0 && px > -0.5 && py < 1.5) {
-               py += 0.015;
-            }
-            // Rear wing up-kick
-            if (px < -1.2 && px > -2.0 && py > 0.5 && py < 1.8) {
-               py += rwa * 0.001;
+          if (px > -2.8 && px < 2.8 && Math.abs(pz) < 1.4 && py < 1.5) {
+            // Tires - approximate bounding cylinders
+            const isFrontWheel = px < 1.6 && px > 0.8 && Math.abs(pz) > 0.5 && Math.abs(pz) < 1.3 && py < 0.8;
+            const isRearWheel = px < -1.0 && px > -1.8 && Math.abs(pz) > 0.5 && Math.abs(pz) < 1.3 && py < 0.8;
+            
+            if (isFrontWheel || isRearWheel) {
+               // Push outward from tire center
+               const zPush = pz > 0 ? 0.35 : -0.35;
+               pz += zPush;
+               py += 0.15; // Upward wash over tires
+            } else if (Math.abs(pz) < 0.8) {
+               // Chassis Body Zone
+               // Approximate curved profile of the car from the side
+               const carProfileY = (px > 0) 
+                  ? 0.5 + Math.max(0, (1.5 - Math.abs(px - 1.0))) * 0.2 // Nose sloping up
+                  : 0.8 - Math.abs(px) * 0.1; // Rear sloping down
+                  
+               if (py < carProfileY) {
+                  // Particle is inside the car body volume
+                  // Deflect it up or out based on distance to edges
+                  const distUp = carProfileY - py;
+                  const distOut = 0.8 - Math.abs(pz);
+                  
+                  if (distUp < distOut * 0.8) {
+                     // Closer to top edge, push up
+                     py += 0.6 * distUp + 0.15;
+                  } else {
+                     // Closer to side edge, push out
+                     pz += (pz > 0 ? 0.3 : -0.3);
+                  }
+               }
+
+               // Front Wing dynamics
+               if (px < 2.5 && px > 1.8 && py < 0.3) {
+                  py += fwa * 0.015; 
+               }
+
+               // Halo and engine cover up-flow
+               if (px < 1.0 && px > -0.5 && py > 0.6 && py < 1.2) {
+                  py += 0.12;
+               }
+
+               // Rear wing up-kick
+               if (px < -1.2 && px > -2.0 && py > 0.5 && py < 1.8) {
+                  py += rwa * 0.025;
+               }
             }
           }
 
@@ -698,6 +983,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
           }
 
           pos[i * 3 + 1] = py;
+          pos[i * 3 + 2] = pz;
 
           // Color based on X position (Heatmap style)
           // Range from X=8 (Red/Hot) to X=-8 (Blue/Cold)
@@ -711,15 +997,6 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
           }
         }
         
-        // Animate wheels and fan
-        if (fanBladeRef.current) {
-          fanBladeRef.current.rotation.x -= (speedBase / 300) * 0.3;
-        }
-        wheelsRef.current.forEach(w => w.rotation.z -= (speedBase / 300) * 0.4);
-        if (beltMatRef.current && beltMatRef.current.map) {
-          beltMatRef.current.map.offset.x -= (speedBase / 300) * 0.05;
-        }
-
         // Animate DRS flap
         if (rwTopMeshRef.current) {
            const currentRot = rwTopMeshRef.current.rotation.z;
@@ -735,6 +1012,42 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
 
         pGeometry.attributes.position.needsUpdate = true;
         pGeometry.attributes.color.needsUpdate = true;
+
+        if (sprayCount > 0 && sprayParticles.geometry) {
+           const sPos = sprayParticles.geometry.attributes.position.array as Float32Array;
+           const sLife = sprayParticles.geometry.attributes.life.array as Float32Array;
+           for(let i=0; i<sprayCount; i++) {
+              sLife[i] -= 0.015;
+              if (sLife[i] <= 0) {
+                 // reset
+                 const wheelIdx = i % 4;
+                 const wPos = wheelPositions[wheelIdx] || [0,0,0];
+                 const isRear = wPos[0] < 0;
+                 sPos[i * 3] = wPos[0] - 0.4 - Math.random() * 0.4; 
+                 sPos[i * 3 + 1] = 0.1 + Math.random() * 0.1;
+                 sPos[i * 3 + 2] = wPos[2] + (Math.random() - 0.5) * 0.5;
+                 
+                 sprayVel[i * 3] = -0.1 - Math.random() * 0.2 - (isRear ? 0.3 : 0.0);
+                 sprayVel[i * 3 + 1] = 0.05 + Math.random() * 0.1;
+                 sprayVel[i * 3 + 2] = (Math.random() - 0.5) * 0.05;
+                 
+                 sLife[i] = 1.0;
+              } else {
+                 sPos[i * 3] += sprayVel[i * 3] * currentSpeedFactor * 1.5;
+                 sPos[i * 3 + 1] += sprayVel[i * 3 + 1] * currentSpeedFactor * 1.5;
+                 sPos[i * 3 + 2] += sprayVel[i * 3 + 2] * currentSpeedFactor * 1.5;
+                 sprayVel[i * 3 + 1] -= 0.002; // gravity effect on spray
+                 // apply turbulence
+                 sPos[i * 3 + 2] += Math.sin(time * 0.05 + i) * 0.02 * currentSpeedFactor;
+                 // diffuse outward and upward if behind car
+                 if (sPos[i * 3] < -2) {
+                    sPos[i * 3 + 1] += (sPos[i*3+1] * (0.01 + Math.random()*0.02)); 
+                 }
+              }
+           }
+           sprayParticles.geometry.attributes.position.needsUpdate = true;
+           sprayParticles.geometry.attributes.life.needsUpdate = true;
+        }
 
         // Telemetry Update Logic - Throttled to 10fps
         if (time - lastUpdate > 100) {
@@ -757,13 +1070,24 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
             speedMod += 20; // DRS speed boost
           }
 
-          const speed = Math.max(0, speedBase + Math.random() * 10 - (instabilityAmount * 5) + speedMod);
+          let weatherSpeedPenalty = 0;
+          let weatherInstability = 0;
+          if (setup.tireType === 'Intermediate') {
+             weatherSpeedPenalty = 20;
+             weatherInstability = 0.5;
+          } else if (setup.tireType === 'Wet') {
+             weatherSpeedPenalty = 45;
+             weatherInstability = 1.2;
+          }
+
+          const speed = Math.max(0, speedBase - weatherSpeedPenalty + Math.random() * 10 - (instabilityAmount * 5) + speedMod);
           
           // Noise factor proportional to instability
-          const noise = 1 + (Math.random() - 0.5) * instabilityAmount * 0.2;
+          const finalInstability = instabilityAmount + weatherInstability;
+          const noise = 1 + (Math.random() - 0.5) * finalInstability * 0.2;
 
           const cl = ((setup.frontWingAngle / 15) + (setup.rearWingAngle / 10) + (80 - setup.rideHeight) / 50) * noise;
-          let cd = (0.6 + (setup.rearWingAngle / 40) + (setup.frontWingAngle / 60)) * (1 + (Math.random() - 0.5) * instabilityAmount * 0.1);
+          let cd = (0.6 + (setup.rearWingAngle / 40) + (setup.frontWingAngle / 60)) * (1 + (Math.random() - 0.5) * finalInstability * 0.1);
           
           if (drsActiveRef.current) {
              cd *= 0.75; // DRS cuts 25% drag
@@ -771,16 +1095,45 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
           
           const calculatedDf = 2000 * cl * (speed / 300);
           const calculatedDrag = 800 * cd * (speed / 300);
-          const balance = (setup.frontWingAngle / (setup.frontWingAngle + setup.rearWingAngle)) * 100 + (Math.random() - 0.5) * instabilityAmount * 2;
+          const balance = (setup.frontWingAngle / (setup.frontWingAngle + setup.rearWingAngle)) * 100 + (Math.random() - 0.5) * finalInstability * 2;
           
-          const tempBase = 90;
-          const tempVariance = Math.random() * 2 - 1 + instabilityAmount * 2;
+          const maxWear = Math.max(
+            latestTelemetryRef.current?.tireWear?.fl || 0,
+            latestTelemetryRef.current?.tireWear?.fr || 0,
+            latestTelemetryRef.current?.tireWear?.rl || 0,
+            latestTelemetryRef.current?.tireWear?.rr || 0
+          );
+          const heatFromWear = (maxWear / 100) * 35; // Tires get much hotter as they wear
+          const tempBase = (setup.tireType === 'Wet' ? 65 : (setup.tireType === 'Intermediate' ? 75 : 90)) + heatFromWear;
+          
+          const tempVariance = Math.random() * 2 - 1 + finalInstability * 2;
           const tireTemp = {
             fl: tempBase + (setup.frontWingAngle / 5) + tempVariance,
             fr: tempBase + (setup.frontWingAngle / 5) - tempVariance,
             rl: tempBase + (setup.rearWingAngle / 4) + (80 - setup.rideHeight) / 10 + tempVariance,
             rr: tempBase + (setup.rearWingAngle / 4) + (80 - setup.rideHeight) / 10 - tempVariance,
           };
+          
+          // Apply visual overheating cues if temps exceed 115C
+          const tireKeys = ['fl', 'fr', 'rl', 'rr'] as const;
+          tireKeys.forEach((key, idx) => {
+            const temp = tireTemp[key];
+            const tireMesh = wheels[idx].children[0] as THREE.Mesh;
+            const material = tireMesh.material as THREE.MeshStandardMaterial;
+            if (material.userData.originalColor) {
+              if (temp > 115) {
+                const heatFactor = Math.min(1.0, (temp - 115) / 15);
+                const shimmer = (Math.sin(time * 0.03 + idx) * 0.5 + 0.5) * heatFactor * 0.6;
+                const heatColor = new THREE.Color(0xff3300);
+                
+                material.color.copy(material.userData.originalColor as THREE.Color).lerp(heatColor, shimmer * 0.5);
+                material.emissive.copy(heatColor).multiplyScalar(shimmer * 0.2);
+              } else {
+                material.color.copy(material.userData.originalColor as THREE.Color);
+                material.emissive.setHex(0x000000);
+              }
+            }
+          });
           
           const wearRateBase = 0.005;
           const tireWear = {
@@ -790,6 +1143,9 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
             rr: Math.min(100, (latestTelemetryRef.current?.tireWear?.rr || 0) + wearRateBase * (tireTemp.rr / 90) * ((100 - balance) / 50)),
           };
 
+          const baseTrackLengthKm = 5.0; // 5km circuit
+          const lapTimeInSeconds = (baseTrackLengthKm / Math.max(1, speed)) * 3600 + (Math.random() - 0.5) * 0.2;
+
           onTelemetryUpdate({
             speed: speed,
             downforce: calculatedDf,
@@ -797,10 +1153,11 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
             cl: cl,
             cd: cd,
             balance,
-            instability: instabilityAmount,
+            instability: finalInstability,
             tireTemp,
             tireWear,
             ers: currentErs,
+            lapTime: lapTimeInSeconds,
             timestamp: Date.now()
           });
           lastUpdate = time;
@@ -838,13 +1195,21 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
   }, [isSimulating, setup, carModel]);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative overflow-hidden bg-black rounded-xl border border-white/10 shadow-inner">
+    <div ref={containerRef} className={cn("w-full h-full relative overflow-hidden bg-black border border-white/10 shadow-inner group", isFullscreen ? "rounded-none" : "rounded-xl")}>
       <div className="absolute top-4 left-4 flex gap-1 z-10">
         <ViewportBtn label="ORTHO" active={view === 'ORTHO'} onClick={() => setView('ORTHO')} />
         <ViewportBtn label="ISO" active={view === 'ISO'} onClick={() => setView('ISO')} />
         <ViewportBtn label="FRONT" active={view === 'FRONT'} onClick={() => setView('FRONT')} />
       </div>
-      
+
+      <button
+        onClick={toggleFullscreen}
+        className="absolute bottom-4 right-4 z-10 p-2 bg-black/50 hover:bg-white/10 border border-white/10 rounded text-slate-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+        title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+      >
+        {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+      </button>
+
       <div className="absolute top-4 right-4 flex flex-col items-end gap-1 z-10">
         <span className="text-[10px] font-mono text-emerald-400 tracking-tighter uppercase font-bold">Flow Velocity Map</span>
         <div className="w-32 h-1.5 bg-gradient-to-r from-blue-500 via-emerald-500 to-rose-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.3)]"></div>
