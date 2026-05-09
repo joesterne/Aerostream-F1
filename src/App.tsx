@@ -17,7 +17,8 @@ import {
   Save,
   Timer,
   Wrench,
-  Cpu
+  Cpu,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from './lib/utils';
 
@@ -482,24 +483,27 @@ export default function App() {
           <div className="h-6 w-[1px] bg-white/10"></div>
           <div className="flex gap-4">
             <HeaderMetric label="Chassis" value="AMR-24 SPEC-C" />
-            <div className="flex flex-col">
-              <span className="text-[10px] text-slate-500 uppercase font-mono">Circuit</span>
-              <select 
-                value={simState.track}
-                onChange={(e) => {
-                  if (e.target.value === 'ADD_NEW') {
-                    setShowAddTrack(true);
-                  } else {
-                    setSimState(s => ({ ...s, track: e.target.value }));
-                  }
-                }}
-                className="bg-transparent text-xs font-bold text-white tracking-widest border-none outline-none cursor-pointer appearance-none px-0 py-0 m-0 hover:text-indigo-400 focus:ring-0 [&>option]:bg-slate-900 [&>option]:text-white"
-              >
-                {Object.keys(tracks).map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-                <option value="ADD_NEW" className="text-indigo-400 font-bold">+ Add New Track</option>
-              </select>
+            <div className="flex flex-col group relative">
+              <span className="text-[10px] text-slate-500 uppercase font-mono tracking-widest mb-0.5">Circuit</span>
+              <div className="flex items-center gap-1.5 cursor-pointer bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded border border-white/10 transition-colors">
+                <select 
+                  value={simState.track}
+                  onChange={(e) => {
+                    if (e.target.value === 'ADD_NEW') {
+                      setShowAddTrack(true);
+                    } else {
+                      setSimState(s => ({ ...s, track: e.target.value }));
+                    }
+                  }}
+                  className="bg-transparent text-[11px] font-bold text-white uppercase tracking-widest border-none outline-none cursor-pointer appearance-none px-0 py-0 m-0 w-full focus:ring-0 [&>option]:bg-slate-900 [&>option]:text-white"
+                >
+                  {Object.keys(tracks).map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                  <option value="ADD_NEW" className="text-indigo-400 font-bold">+ Add New Track</option>
+                </select>
+                <ChevronDown className="w-3 h-3 text-slate-400 group-hover:text-white transition-colors pointer-events-none shrink-0" />
+              </div>
             </div>
           </div>
         </div>
