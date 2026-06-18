@@ -147,8 +147,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    // Cap pixel ratio to 1.5 for performance, devices with higher pixel ratio drop frames
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.top = '0';
