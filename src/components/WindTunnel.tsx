@@ -131,8 +131,8 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
 
     // 1. Scene & Camera Init
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x020202);
-    scene.fog = new THREE.Fog(0x020202, 10, 40);
+    scene.background = new THREE.Color(0x030712);
+    scene.fog = new THREE.FogExp2(0x030712, 0.045);
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(50, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
@@ -146,8 +146,12 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     camera.lookAt(0, 0.5, 0);
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.top = '0';
@@ -172,34 +176,49 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     controls.target.set(0, 0.5, 0);
 
     // 2. Advanced Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    const ambientLight = new THREE.HemisphereLight(0xdbeafe, 0x020617, 0.85);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.SpotLight(0xffffff, 150, 50, Math.PI / 4, 0.8, 1);
-    mainLight.position.set(5, 10, 5);
+    const mainLight = new THREE.SpotLight(0xffffff, 420, 70, Math.PI / 5, 0.55, 1);
+    mainLight.position.set(5, 9, 5);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.set(2048, 2048);
     mainLight.lookAt(0, 0, 0);
     scene.add(mainLight);
 
-    const rimLight = new THREE.SpotLight(0x818cf8, 100, 50, Math.PI / 4, 0.8, 1);
+    const rimLight = new THREE.SpotLight(0x60a5fa, 260, 55, Math.PI / 4, 0.7, 1);
     rimLight.position.set(-8, 5, -5);
     rimLight.lookAt(0, 0, 0);
     scene.add(rimLight);
 
+    const accentLight = new THREE.PointLight(0x10b981, 55, 12, 1.8);
+    accentLight.position.set(2.4, 1.4, -2.2);
+    scene.add(accentLight);
+
     // 3. Grid & Environment
     const floorGeo = new THREE.PlaneGeometry(100, 100);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.8 });
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x050816, roughness: 0.28, metalness: 0.72, envMapIntensity: 0.8 });
     const floorMesh = new THREE.Mesh(floorGeo, floorMat);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.position.y = -0.05;
+    floorMesh.receiveShadow = true;
     scene.add(floorMesh);
+
+    const grid = new THREE.GridHelper(24, 48, 0x2563eb, 0x1e293b);
+    grid.position.y = -0.035;
+    const gridMaterial = grid.material as THREE.Material;
+    gridMaterial.transparent = true;
+    gridMaterial.opacity = 0.22;
+    scene.add(grid);
 
     // Wind Tunnel Room / Walls
     const roomGeo = new THREE.CylinderGeometry(14, 14, 100, 32, 1, true);
     const roomMat = new THREE.MeshStandardMaterial({ 
-      color: 0x111115, 
-      roughness: 0.7, 
-      metalness: 0.3, 
-      side: THREE.BackSide 
+      color: 0x0f172a, 
+      roughness: 0.62, 
+      metalness: 0.36, 
+      side: THREE.BackSide,
+      envMapIntensity: 0.45
     });
     const roomMesh = new THREE.Mesh(roomGeo, roomMat);
     roomMesh.rotation.z = Math.PI / 2;
@@ -208,7 +227,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
 
     // Tunnel Ceiling Strip Lights
     const stripGeo = new THREE.PlaneGeometry(100, 0.4);
-    const stripMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+    const stripMat = new THREE.MeshBasicMaterial({ color: 0xbfdcff, side: THREE.DoubleSide, toneMapped: false });
     for (let i = -1; i <= 1; i += 2) {
       const strip = new THREE.Mesh(stripGeo, stripMat);
       strip.position.set(0, 17.5, i * 4); // Y=17.5 (close to top of cylinder at 18)
@@ -238,7 +257,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     beltTex.wrapT = THREE.RepeatWrapping;
 
     const beltGeo = new THREE.PlaneGeometry(12, 3);
-    const beltMat = new THREE.MeshStandardMaterial({ map: beltTex, roughness: 0.9, color: 0x888888 });
+    const beltMat = new THREE.MeshStandardMaterial({ map: beltTex, roughness: 0.55, metalness: 0.25, color: 0x64748b });
     beltMatRef.current = beltMat;
     const beltMesh = new THREE.Mesh(beltGeo, beltMat);
     beltMesh.rotation.x = -Math.PI / 2;
@@ -250,13 +269,13 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     fanGroup.position.set(-10, 2.5, 0);
     fanGroup.rotation.y = Math.PI / 2;
     const fanCasing = new THREE.Mesh(
-      new THREE.TorusGeometry(3.5, 0.5, 16, 64),
-      new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 })
+      new THREE.TorusGeometry(3.5, 0.5, 24, 96),
+      new THREE.MeshPhysicalMaterial({ color: 0x111827, roughness: 0.32, metalness: 0.85, clearcoat: 0.45 })
     );
     fanGroup.add(fanCasing);
     
     const bladeGeo = new THREE.BoxGeometry(0.05, 6.8, 0.8);
-    const bladeMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.5, metalness: 0.8 });
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.38, metalness: 0.9 });
     const bladeGroup = new THREE.Group();
     
     // Add central hub to the fan
@@ -281,21 +300,23 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
 
     // 4. Detailed Car Construction
     const matCarbon = new THREE.MeshPhysicalMaterial({ 
-      color: 0x111111, 
-      roughness: 0.7, 
-      metalness: 0.8,
-      clearcoat: 0.3,
-      clearcoatRoughness: 0.4 
+      color: 0x08090c, 
+      roughness: 0.34, 
+      metalness: 0.78,
+      clearcoat: 0.55,
+      clearcoatRoughness: 0.28,
+      envMapIntensity: 1.2
     });
     const matPaint = new THREE.MeshPhysicalMaterial({ 
-      color: 0x182035, // deeper blue 
-      metalness: 0.4, 
-      roughness: 0.2,
+      color: 0x172554, // deep professional motorsport blue 
+      metalness: 0.48, 
+      roughness: 0.16,
       clearcoat: 1.0,
-      clearcoatRoughness: 0.1
+      clearcoatRoughness: 0.06,
+      envMapIntensity: 1.35
     });
-    const matYellow = new THREE.MeshStandardMaterial({ color: 0xecca00, roughness: 0.3, metalness: 0.2 });
-    const matRed = new THREE.MeshStandardMaterial({ color: 0xcc0000, roughness: 0.3, metalness: 0.2 });
+    const matYellow = new THREE.MeshPhysicalMaterial({ color: 0xfacc15, roughness: 0.22, metalness: 0.28, clearcoat: 0.8 });
+    const matRed = new THREE.MeshPhysicalMaterial({ color: 0xdc2626, roughness: 0.2, metalness: 0.32, clearcoat: 0.85 });
     const matAccent = new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 0.4 });
 
     const builderResult = buildCarGroup(carModel, setupRef.current, matCarbon, matPaint, matYellow, matRed, matAccent);
@@ -308,69 +329,13 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     if (rwTopMesh) rwTopMeshRef.current = rwTopMesh;
     if (drsLight) drsLightRef.current = drsLight;
 
-    // --- LEGO BLOCKIFIER ---
-    const studCanvas = document.createElement('canvas');
-    studCanvas.width = 128;
-    studCanvas.height = 128;
-    const ctx = studCanvas.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, 128, 128);
-      ctx.beginPath();
-      ctx.arc(64, 64, 40, 0, Math.PI * 2);
-      ctx.fillStyle = '#f0f0f0';
-      ctx.fill();
-      ctx.strokeStyle = '#dfdfdf';
-      ctx.lineWidth = 12;
-      ctx.stroke();
-    }
-    const studTexBase = new THREE.CanvasTexture(studCanvas);
-    studTexBase.wrapS = THREE.RepeatWrapping;
-    studTexBase.wrapT = THREE.RepeatWrapping;
-
     carGroup.traverse((child) => {
-      let isWheel = false;
-      let parent: THREE.Object3D | null = child.parent;
-      while(parent) {
-         if(parent.userData.isWheel) isWheel = true;
-         parent = parent.parent;
-      }
-      if (isWheel || child.userData.isWheel) return;
-
       const mesh = child as THREE.Mesh;
       if (mesh.isMesh) {
-        mesh.geometry.computeBoundingBox();
-        if (mesh.geometry.boundingBox) {
-          const size = new THREE.Vector3();
-          mesh.geometry.boundingBox.getSize(size);
-          
-          let bx = size.x;
-          let by = size.y;
-          let bz = size.z;
-          
-          if (bx < 0.05) bx = 0.05;
-          if (by < 0.05) by = 0.05;
-          if (bz < 0.05) bz = 0.05;
-          
-          mesh.geometry = new THREE.BoxGeometry(bx, by, bz);
-          
-          if (mesh.material && !Array.isArray(mesh.material)) {
-            const oldMat = mesh.material as THREE.MeshStandardMaterial;
-            const newMat = oldMat.clone();
-            newMat.roughness = 0.1;
-            newMat.metalness = 0.0;
-            
-            const tex = studTexBase.clone();
-            tex.needsUpdate = true;
-            tex.repeat.set(Math.max(1, Math.ceil(bx / 0.15)), Math.max(1, Math.ceil(bz / 0.15)));
-            newMat.map = tex;
-            
-            mesh.material = newMat;
-          }
-        }
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
       }
     });
-    // --- END LEGO BLOCKIFIER ---
 
     // Initial Car placement
     wheelsRef.current = wheels;

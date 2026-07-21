@@ -472,9 +472,9 @@ export default function App() {
   };
 
   return (
-    <div className="w-full h-screen bg-[#050505] text-slate-300 font-sans flex flex-col overflow-hidden">
+    <div className="professional-shell w-full h-screen text-slate-300 font-sans flex flex-col overflow-hidden">
       {/* TOP NAV BAR */}
-      <header className="h-14 border-b border-white/10 flex items-center justify-between px-4 bg-[#0a0a0a] shrink-0">
+      <header className="h-14 border-b border-sky-400/10 flex items-center justify-between px-4 bg-slate-950/75 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.28)] shrink-0">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <div className={cn("w-3 h-3 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]", simState.isActive ? "bg-emerald-500 animate-pulse" : "bg-slate-600")}></div>
@@ -523,7 +523,7 @@ export default function App() {
 
       <div className="flex flex-1 min-h-0">
         {/* LEFT SIDEBAR: LIVE FEED */}
-        <aside className="w-64 border-r border-white/10 bg-[#080808] p-4 flex flex-col gap-4 overflow-hidden shrink-0">
+        <aside className="w-64 border-r border-sky-400/10 bg-slate-950/45 backdrop-blur-xl p-4 flex flex-col gap-4 overflow-hidden shrink-0">
           <div>
             <h3 className="mono-label mb-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Live Telemetry</h3>
             <div className="space-y-1.5">
@@ -641,7 +641,7 @@ export default function App() {
 
         {/* MAIN VISUALIZER AREA */}
         <main className="flex-1 flex flex-col bg-[#050505] p-4 gap-4 min-w-0">
-          <div className="flex-1 bg-[#0a0a0a] border border-white/10 rounded-xl relative overflow-hidden flex items-center justify-center shadow-inner">
+          <div className="flex-1 glass-panel rounded-2xl relative overflow-hidden flex items-center justify-center">
             <WindTunnel 
               setup={setup} 
               isSimulating={simState.isActive} 
@@ -659,14 +659,14 @@ export default function App() {
                 <Dashboard data={telemetry} />
              </div>
              
-             <div className="w-56 bg-[#0a0a0a] border border-white/10 rounded-lg p-3 flex flex-col shrink-0 relative overflow-hidden">
+             <div className="w-56 pro-card rounded-xl p-3 flex flex-col shrink-0 relative overflow-hidden">
                 <h4 className="mono-label mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest absolute top-3 left-3 z-10 w-full bg-[#0a0a0a]">Circuit Map</h4>
                 <div className="flex-1 -mt-2">
                   <TrackMap track={simState.track} active={simState.isActive} speed={latest?.speed || 0} />
                 </div>
              </div>
 
-             <div className="w-56 bg-[#0a0a0a] border border-white/10 rounded-lg p-3 flex flex-col shrink-0">
+             <div className="w-56 pro-card rounded-xl p-3 flex flex-col shrink-0">
                 <h4 className="mono-label mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Weather Status</h4>
                 <div className="grid grid-cols-2 gap-2 flex-1">
                   <WeatherMiniCard label="TEMP" value={trackWeather.temp} />
@@ -679,7 +679,7 @@ export default function App() {
         </main>
 
         {/* RIGHT ANALYTICS SIDEBAR */}
-        <aside className="w-64 border-l border-white/10 bg-[#080808] p-4 flex flex-col gap-6 shrink-0 text-slate-400 overflow-y-auto">
+        <aside className="w-64 border-l border-sky-400/10 bg-slate-950/45 backdrop-blur-xl p-4 flex flex-col gap-6 shrink-0 text-slate-400 overflow-y-auto">
           <div>
             <h3 className="mono-label mb-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between">
               <span>Vehicle Mode</span>
@@ -883,7 +883,7 @@ export default function App() {
       </div>
 
       {/* FOOTER CONTROLS */}
-      <footer className="h-12 border-t border-white/10 bg-[#0a0a0a] flex items-center px-4 gap-6 shrink-0">
+      <footer className="h-12 border-t border-sky-400/10 bg-slate-950/75 backdrop-blur-xl flex items-center px-4 gap-6 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Wind Speed</span>
           <input type="range" className="w-32 h-1 bg-slate-800 accent-indigo-500" />
@@ -999,7 +999,7 @@ const HeaderMetric = ({ label, value }: { label: string, value: string | undefin
 );
 
 const TelemetryRow = ({ label, value, color }: { label: string, value: string, color: string }) => (
-  <div className="flex justify-between items-center bg-white/5 p-2 rounded">
+  <div className="flex justify-between items-center pro-card p-2 rounded-lg">
     <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">{label}</span>
     <span className={cn("text-xs font-mono font-bold tracking-widest", color)}>{value}</span>
   </div>
@@ -1013,7 +1013,7 @@ const HealthStatus = ({ label, status }: { label: string, status: 'ok' | 'warn' 
 );
 
 const WeatherMiniCard = ({ label, value, accent }: { label: string, value: string, accent?: boolean }) => (
-  <div className="bg-white/5 py-1 px-2 rounded">
+  <div className="pro-card py-1 px-2 rounded-lg">
     <span className="text-[8px] block text-slate-500 uppercase tracking-tighter">{label}</span>
     <span className={cn("text-xs font-mono font-bold", accent ? "text-emerald-400" : "text-white")}>{value}</span>
   </div>
