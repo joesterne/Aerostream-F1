@@ -11,7 +11,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data }) => {
   const latest = data[data.length - 1];
 
   return (
-    <div className="bg-[#0a0a0a] border border-white/10 rounded-lg p-3 h-full flex flex-col gap-3 overflow-hidden">
+    <div className="glass-panel rounded-xl p-3 h-full flex flex-col gap-3 overflow-hidden">
       <div className="flex justify-between items-center shrink-0">
         <h4 className="mono-label text-[10px] font-bold text-slate-500 uppercase tracking-widest">
           Aero Performance Analysis
@@ -30,7 +30,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data }) => {
 
       <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 min-h-0">
         {/* Cl / Cd Timeline */}
-        <div className="bg-white/5 rounded p-2 flex flex-col">
+        <div className="pro-card rounded-lg p-2 flex flex-col">
           <span className="text-[8px] text-slate-500 uppercase mb-2 font-mono">Coefficients (Cl & Cd)</span>
           <div className="flex-1 min-h-[120px]">
             <ResponsiveContainer width="100%" height={120}>
@@ -50,7 +50,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         </div>
 
         {/* Downforce Distribution Chart */}
-        <div className="bg-white/5 rounded p-2 flex flex-col">
+        <div className="pro-card rounded-lg p-2 flex flex-col">
           <span className="text-[8px] text-slate-500 uppercase mb-2 font-mono">Downforce Load (N)</span>
           <div className="flex-1 min-h-[120px]">
             <ResponsiveContainer width="100%" height={120}>
@@ -75,7 +75,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         </div>
 
         {/* Lap Time Chart */}
-        <div className="bg-white/5 rounded p-2 flex flex-col">
+        <div className="pro-card rounded-lg p-2 flex flex-col">
           <span className="text-[8px] text-slate-500 uppercase mb-2 font-mono">Lap Time (s)</span>
           <div className="flex-1 min-h-[120px]">
             <ResponsiveContainer width="100%" height={120}>
@@ -119,7 +119,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data }) => {
                <span className="text-slate-500">AERO STABILITY</span>
                <span className="text-white">{Math.max(0, 100 - (latest?.instability || 0) * 100).toFixed(1)}%</span>
             </div>
-            <div className="h-1 bg-slate-800 rounded-full">
+            <div className="h-1 bg-slate-900/80 rounded-full overflow-hidden">
                <div className={cn("h-full transition-all duration-300", 
                  (latest?.instability || 0) > 0.4 ? "bg-red-500" : "bg-emerald-500")} 
                  style={{ width: `${Math.max(0, 100 - (latest?.instability || 0) * 100)}%` }} />
@@ -136,7 +136,7 @@ const DistributionBar = ({ label, value, color }: { label: string, value?: numbe
       <span className="text-slate-500 uppercase">{label}</span>
       <span className="text-white">{value?.toFixed(1)}%</span>
     </div>
-    <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+    <div className="h-1 bg-slate-900/80 rounded-full overflow-hidden">
       <div className={cn("h-full transition-all duration-500", color)} style={{ width: `${value}%` }} />
     </div>
   </div>
