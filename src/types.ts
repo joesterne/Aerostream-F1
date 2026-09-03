@@ -42,6 +42,7 @@ export interface SimulationState {
   track: string;
   ersMode?: 'neutral' | 'regen' | 'boost';
   carModel?: 'Formula 1' | 'Hypercar' | 'GT3';
+  autoPause?: boolean;
 }
 
 export interface DriverStanding {

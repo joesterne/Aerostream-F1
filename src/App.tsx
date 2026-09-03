@@ -82,7 +82,8 @@ export default function App() {
     weather: 'Sunny',
     track: 'Silverstone',
     ersMode: 'neutral',
-    carModel: 'Formula 1'
+    carModel: 'Formula 1',
+    autoPause: false
   });
   const [trackWeather, setTrackWeather] = useState({
     temp: '32.4°C',
@@ -407,6 +408,31 @@ export default function App() {
 
   const [aiAdviceError, setAiAdviceError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const handleBlur = () => {
+      setSimState(s => {
+        if (s.autoPause && s.isActive) {
+          return { ...s, isActive: false };
+        }
+        return s;
+      });
+    };
+    
+    window.addEventListener('blur', handleBlur);
+    return () => window.removeEventListener('blur', handleBlur);
+  }, []);
+
+  useEffect(() => {
+    if (pitState.status === 'pitting') {
+      setSimState(s => {
+        if (s.autoPause && s.isActive) {
+          return { ...s, isActive: false };
+        }
+        return s;
+      });
+    }
+  }, [pitState.status]);
+
   const handleCarModelChange = (model: 'Formula 1' | 'Hypercar' | 'GT3') => {
     setSimState(s => ({ ...s, carModel: model }));
     if (savedSetups[model]) {
@@ -517,6 +543,15 @@ export default function App() {
           <div className={cn("px-3 py-1 border rounded text-[10px] font-bold uppercase transition-colors", simState.isActive ? "bg-rose-500/10 border-rose-500/20 text-rose-500" : "bg-white/5 border-white/10 text-slate-500")}>
             {simState.isActive ? 'Telemetry Active' : 'Standby'}
           </div>
+          <button 
+            onClick={() => setSimState(s => ({ ...s, autoPause: !s.autoPause }))}
+            title="Auto-Pause on Blur or Pit Entry"
+            className={cn("px-3 py-1 border rounded text-[10px] font-bold uppercase transition-colors cursor-pointer", 
+              simState.autoPause ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-400" : "bg-white/5 border-white/10 text-slate-500 hover:bg-white/10"
+            )}
+          >
+            Auto-Pause: {simState.autoPause ? 'ON' : 'OFF'}
+          </button>
           <div className="text-xs font-mono text-slate-400 w-[110px] text-right">{realClock}</div>
         </div>
       </header>
