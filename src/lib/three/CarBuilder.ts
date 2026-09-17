@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { AeroSetup, TelemetryData } from '../../types';
+import { AeroSetup } from '../../types';
 
 export function buildCarGroup(
   carModel: string,

@@ -48,7 +48,7 @@ async function startServer() {
   // API routes FIRST
   app.use(express.json());
   
-  app.get("/api/test-env", (req, res) => {
+  app.get("/api/test-env", (_req, res) => {
     res.json({ hasKey: !!process.env.GEMINI_API_KEY, prefix: String(process.env.GEMINI_API_KEY).substring(0, 5) });
   });
 
@@ -94,7 +94,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+    app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }

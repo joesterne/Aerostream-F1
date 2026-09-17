@@ -142,30 +142,3 @@ const DistributionBar = ({ label, value, color }: { label: string, value?: numbe
   </div>
 );
 
-const MetricCard = ({ label, value, unit, icon, color }: { label: string, value: string | number, unit: string, icon: React.ReactNode, color: string }) => (
-  <div className="bg-neutral-900/50 p-4 rounded-xl border border-white/5 hover:border-white/20 transition-colors">
-    <div className="flex justify-between items-center mb-2">
-      <span className="text-[10px] font-mono text-neutral-500 tracking-widest uppercase">{label}</span>
-      <div className={color}>{icon}</div>
-    </div>
-    <div className="flex items-baseline gap-1">
-      <span className="text-2xl font-bold tracking-tighter">{value}</span>
-      <span className="text-[10px] font-mono text-neutral-500 uppercase">{unit}</span>
-    </div>
-  </div>
-);
-
-const BalanceRow = ({ label, value, active }: { label: string, value: number, active?: boolean }) => (
-  <div>
-    <div className="flex justify-between text-[10px] font-mono text-neutral-400 mb-1">
-      <span>{label}</span>
-      <span>{value}%</span>
-    </div>
-    <div className="h-1 bg-neutral-800 rounded-full overflow-hidden">
-      <div 
-        className={cn("h-full transition-all duration-500", active ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" : "bg-neutral-500")} 
-        style={{ width: `${value}%` }} 
-      />
-    </div>
-  </div>
-);

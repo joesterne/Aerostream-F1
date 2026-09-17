@@ -15,6 +15,7 @@ View your app in AI Studio: https://ai.studio/apps/51c344b0-9873-4298-bc11-dfab6
   - Dynamic airflow visualization using particle systems.
 - **Aerodynamics & Telemetry Simulation:**
   - Real-time calculations of Lift, Drag, Downforce, and Aero Stability based on car setup.
+  - **Auto-Pause feature** automatically halts the simulation when the window loses focus or the car enters the pit lane, giving you time to adjust setups.
 - **Live Dashboard:**
   - Live charts using Recharts for telemetry timelines (Downforce Load, Cl/Cd ratios, Lap Times).
   - Pit stop strategy management and live standings simulation.

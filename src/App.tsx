@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { motion, AnimatePresence } from 'motion/react';
 import { WindTunnel } from './components/WindTunnel';
 import { Dashboard } from './components/Dashboard';
 import { TrackMap } from './components/TrackMap';
@@ -1066,7 +1065,7 @@ const AnalysisMetric = ({ label, value, percent, color }: { label: string, value
   </div>
 );
 
-const SliderControl = ({ label, value, unit, min, max, onChange, dense }: { label: string, value: number, unit: string, min: number, max: number, onChange: (v: number) => void, dense?: boolean }) => (
+const SliderControl = ({ label, value, unit, min, max, onChange }: { label: string, value: number, unit: string, min: number, max: number, onChange: (v: number) => void, dense?: boolean }) => (
   <div>
     <div className="flex justify-between text-[10px] mb-1">
       <span className="text-slate-500 uppercase font-mono tracking-widest">{label}</span>

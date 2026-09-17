@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, MouseEvent as ReactMouseEvent } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -255,7 +255,6 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     );
     fanGroup.add(fanCasing);
     
-    const bladeGeo = new THREE.BoxGeometry(0.05, 6.8, 0.8);
     const bladeMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.5, metalness: 0.8 });
     const bladeGroup = new THREE.Group();
     
@@ -379,7 +378,6 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
     scene.add(carGroup);
     
     // --- Water Spray System (For Wet/Intermediate Tires) ---
-    const isWet = setup.tireType === 'Wet' || setup.tireType === 'Intermediate';
     const sprayParticles = new THREE.Points(); // placeholder
     let sprayPos: Float32Array;
     let sprayVel: Float32Array;
