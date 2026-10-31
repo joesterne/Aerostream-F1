@@ -47,10 +47,6 @@ async function startServer() {
 
   // API routes FIRST
   app.use(express.json());
-  
-  app.get("/api/test-env", (_req, res) => {
-    res.json({ hasKey: !!process.env.GEMINI_API_KEY, prefix: String(process.env.GEMINI_API_KEY).substring(0, 5) });
-  });
 
   app.post("/api/advice", async (req, res) => {
     try {

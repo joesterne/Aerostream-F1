@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { WindTunnel } from './components/WindTunnel';
 import { Dashboard } from './components/Dashboard';
@@ -284,7 +284,10 @@ export default function App() {
         let prevGap = 0;
         return updated.map((d, index) => {
            if (d.status !== 'active') {
-             return { ...d, position: index + 1 };
+             // Strip totalGap here too (the active branches already do): it
+             // is Infinity for non-active drivers and leaked into state.
+             const { totalGap, ...rest } = d as any;
+             return { ...rest, position: index + 1 };
            }
            if (index === 0) {
              prevGap = d.totalGap;
@@ -323,6 +326,14 @@ export default function App() {
     autoEnable: boolean;
   }>({ available: false, active: false, autoEnable: true });
 
+  // The DRS interval reads standings/latest through refs: with them as effect
+  // deps, the 500ms interval was cleared and recreated on every telemetry
+  // tick (~10x/s), so 500ms never elapsed and the check effectively never ran.
+  const standingsRef = useRef(standings);
+  useEffect(() => { standingsRef.current = standings; }, [standings]);
+  const latestRef = useRef(latest);
+  useEffect(() => { latestRef.current = latest; }, [latest]);
+
   // DRS AI logic
   useEffect(() => {
     if (!simState.isActive) {
@@ -333,14 +344,15 @@ export default function App() {
     }
 
     const intervalId = setInterval(() => {
-      const playerIndex = standings.findIndex(d => d.isPlayer);
+      const currentStandings = standingsRef.current;
+      const playerIndex = currentStandings.findIndex(d => d.isPlayer);
       if (playerIndex > 0) {
-        const gapString = standings[playerIndex].interval;
+        const gapString = currentStandings[playerIndex].interval;
         const gapSeconds = parseFloat(gapString.replace('+', '').replace('s', ''));
-        
+
         // Using > 220 as a threshold for "on a straight"
-        const isStraight = (latest?.speed || 0) > 220;
-        const isEligible = !isNaN(gapSeconds) && gapSeconds < 1.0 && gapSeconds > 0 && standings[playerIndex].status === 'active';
+        const isStraight = (latestRef.current?.speed || 0) > 220;
+        const isEligible = !isNaN(gapSeconds) && gapSeconds < 1.0 && gapSeconds > 0 && currentStandings[playerIndex].status === 'active';
         
         if (isEligible && isStraight) {
           setDrsState(prev => {
@@ -363,7 +375,7 @@ export default function App() {
     }, 500);
 
     return () => clearInterval(intervalId);
-  }, [simState.isActive, standings, latest?.speed, drsState.autoEnable]);
+  }, [simState.isActive, drsState.autoEnable]);
 
   const triggerPitStop = (tireType: TireType, repairs: boolean) => {
     if (pitState.status !== 'none' || !simState.isActive) return;

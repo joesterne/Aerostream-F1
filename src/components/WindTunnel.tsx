@@ -32,6 +32,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
   const latestTelemetryRef = useRef(latestTelemetry);
   const ersModeRef = useRef(ersMode);
   const drsActiveRef = useRef(drsActive);
+  const isSimulatingRef = useRef(isSimulating);
   const speedFactorRef = useRef(isSimulating ? 1 : 0);
   const setupRef = useRef(setup);
 
@@ -94,6 +95,10 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
   useEffect(() => {
     drsActiveRef.current = drsActive;
   }, [drsActive]);
+
+  useEffect(() => {
+    isSimulatingRef.current = isSimulating;
+  }, [isSimulating]);
 
   // Dragging state for Tyre Status HUD
   const [hudPos, setHudPos] = useState({ x: 0, y: 0 });
@@ -519,7 +524,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       controls.update();
 
       // Smooth speed up / down
-      if (isSimulating) {
+      if (isSimulatingRef.current) {
         speedFactorRef.current += (1 - speedFactorRef.current) * 0.05;
       } else {
         speedFactorRef.current += (0 - speedFactorRef.current) * 0.02;
@@ -537,7 +542,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
         beltMatRef.current.map.offset.x -= currentSpeedFactor * 0.15;
       }
 
-      if (isSimulating) {
+      if (isSimulatingRef.current) {
         const pos = pGeometry.attributes.position.array as Float32Array;
         const col = pGeometry.attributes.color.array as Float32Array;
         const speedBase = 280;
@@ -841,13 +846,21 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
       scene.traverse((object: any) => {
         if (object.geometry) object.geometry.dispose();
         if (object.material) {
+          const disposeMaterial = (m: any) => {
+            // The LEGO blockifier clones a stud texture per mesh; material
+            // .dispose() alone never releases those texture maps.
+            if (m.map) m.map.dispose();
+            m.dispose();
+          };
           if (Array.isArray(object.material)) {
-            object.material.forEach((m: any) => m.dispose());
+            object.material.forEach(disposeMaterial);
           } else {
-            object.material.dispose();
+            disposeMaterial(object.material);
           }
         }
       });
+      pmremGenerator.dispose();
+      if (scene.environment) scene.environment.dispose();
       particleTexture.dispose();
       if ((sprayParticles as any).material && (sprayParticles as any).material.map) {
          (sprayParticles as any).material.map.dispose();
@@ -859,7 +872,7 @@ export const WindTunnel: React.FC<WindTunnelProps> = ({ setup, isSimulating, onT
         containerRef.current.removeChild(renderer.domElement);
       }
     };
-  }, [isSimulating, setup.tireType, carModel]);
+  }, [setup.tireType, carModel]);
 
   return (
     <div ref={containerRef} className={cn("w-full h-full relative overflow-hidden bg-black border border-white/10 shadow-inner group", isFullscreen ? "rounded-none" : "rounded-xl")}>

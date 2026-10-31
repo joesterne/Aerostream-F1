@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -48,7 +48,8 @@ export function TrackMap({ track, active, speed, className }: { track: string, a
 
   useEffect(() => {
     let animationFrame: number;
-    
+    let resetTimeout: ReturnType<typeof setTimeout> | undefined;
+
     const setInitPosition = () => {
       if (pathRef.current && dotRef.current) {
         progressRef.current = 0;
@@ -56,9 +57,9 @@ export function TrackMap({ track, active, speed, className }: { track: string, a
         dotRef.current.setAttribute('transform', `translate(${p.x}, ${p.y})`);
       }
     };
-    
+
     if (!active) {
-      setTimeout(setInitPosition, 100); 
+      resetTimeout = setTimeout(setInitPosition, 100);
     }
 
     const updatePosition = (time: number) => {
@@ -93,7 +94,12 @@ export function TrackMap({ track, active, speed, className }: { track: string, a
     };
     
     animationFrame = requestAnimationFrame(updatePosition);
-    return () => cancelAnimationFrame(animationFrame);
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      // Was never cleared: a pending reset could fire after unmount or a
+      // track change and write to stale refs.
+      if (resetTimeout) clearTimeout(resetTimeout);
+    };
   }, [active, track, expanded]);
 
   const pathD = TRACK_PATHS[track] || TRACK_PATHS['Silverstone'];
